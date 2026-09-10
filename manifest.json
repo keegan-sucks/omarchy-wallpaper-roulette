@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.keegan-sucks.wallpaper-roulette",
+  "name": "Wallpaper Roulette",
+  "version": "0.1.0",
+  "author": "keegan-sucks",
+  "license": "MIT",
+  "description": "Rotates through your wallpapers on a timer and switches the Omarchy theme to match each one. Point it at a folder of wallpapers organized by theme, or leave it on the built-in Omarchy wallpapers.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Wallpaper Roulette",
+    "description": "Auto-rotate wallpapers and match the theme to each one",
+    "category": "Appearance",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "schema": [
+      {
+        "key": "wallpaperDir",
+        "type": "string",
+        "label": "Wallpaper directory",
+        "description": "Folder of wallpapers laid out as <dir>/<theme-slug>/image (e.g. ~/.config/omarchy/backgrounds). The parent folder name selects the matching Omarchy theme. Leave empty to rotate the built-in Omarchy wallpapers of every installed theme.",
+        "defaultValue": ""
+      },
+      {
+        "key": "intervalMinutes",
+        "type": "number",
+        "label": "Rotate every (minutes)",
+        "description": "How often to switch to a new random wallpaper.",
+        "defaultValue": 30
+      },
+      {
+        "key": "autoEnabled",
+        "type": "boolean",
+        "label": "Auto-rotate",
+        "description": "Rotate automatically on the timer. Turn off to only change on click. Right-click the bar icon to toggle this.",
+        "defaultValue": true
+      },
+      {
+        "key": "applyMatchingTheme",
+        "type": "boolean",
+        "label": "Match theme to wallpaper",
+        "description": "When a wallpaper's parent folder is an installed theme, switch to that theme as the wallpaper changes.",
+        "defaultValue": true
+      },
+      {
+        "key": "notify",
+        "type": "boolean",
+        "label": "Notify on change",
+        "description": "Send a desktop notification each time the wallpaper rotates.",
+        "defaultValue": false
+      },
+      {
+        "key": "glyph",
+        "type": "string",
+        "label": "Bar glyph",
+        "description": "Nerd Font glyph shown in the bar.",
+        "defaultValue": "󰋫"
+      }
+    ]
+  }
+}
