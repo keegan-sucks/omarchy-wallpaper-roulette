@@ -2,6 +2,21 @@
 # omarchy-wallpaper-roulette: pick a random wallpaper and apply its theme.
 #
 # Usage: rotate.sh [--dir DIR] [--apply-theme 0|1] [--notify 0|1] [--dry-run]
+#        rotate.sh --if-due SECONDS [other options]
+#        rotate.sh --print-elapsed
+#
+# Each successful rotation records the current epoch in a state file. The bar
+# widget can't keep a reliable countdown of its own — the shell tears the widget
+# down and rebuilds it on every plugin reload or restart, which would reset an
+# in-memory timer — so timing lives here instead:
+#
+#   --if-due SECONDS  Rotate only if at least SECONDS have passed since the last
+#                     rotation (or it never rotated); otherwise do nothing. The
+#                     check and the timestamp update are serialized with a lock,
+#                     so a widget that runs on several monitors, all calling this
+#                     at once, still rotates exactly once per interval.
+#   --print-elapsed   Print whole seconds since the last rotation (-1 if never)
+#                     and exit without changing anything.
 #
 # The chosen wallpaper's theme is inferred from the name of the directory that
 # contains it: a wallpaper at "<DIR>/tokyo-night/foo.jpg" belongs to the
@@ -21,6 +36,8 @@ DIR=""
 APPLY_THEME=1
 NOTIFY=0
 DRY_RUN=0
+MODE=rotate
+DUE_SECS=""
 
 while (($#)); do
   case "$1" in
@@ -28,7 +45,9 @@ while (($#)); do
     --apply-theme) APPLY_THEME="${2:-1}"; shift 2 ;;
     --notify) NOTIFY="${2:-0}"; shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
-    -h|--help) sed -n '2,20p' "$0"; exit 0 ;;
+    --if-due) DUE_SECS="${2:-0}"; shift 2 ;;
+    --print-elapsed) MODE=elapsed; shift ;;
+    -h|--help) sed -n '2,29p' "$0"; exit 0 ;;
     *) echo "rotate.sh: unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -40,6 +59,35 @@ OMARCHY_THEMES_PATH="${OMARCHY_PATH:-/usr/share/omarchy}/themes"
 USER_THEMES_PATH="$HOME/.config/omarchy/themes"
 USER_BG_PATH="$HOME/.config/omarchy/backgrounds"
 CURRENT_THEME_NAME_FILE="$HOME/.local/state/omarchy/current/theme.name"
+STAMP_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/wallpaper-roulette/last-rotate"
+
+# Whole seconds since the last successful rotation, or -1 if never. The widget
+# uses this to reconstruct its countdown across shell reloads/restarts.
+if [[ $MODE == elapsed ]]; then
+  last="$(cat "$STAMP_FILE" 2>/dev/null || true)"
+  if [[ $last =~ ^[0-9]+$ ]]; then
+    echo $(( $(date +%s) - last ))
+  else
+    echo -1
+  fi
+  exit 0
+fi
+
+# --if-due gate. Hold a lock for the rest of the run so that when the widget
+# lives on several monitors and every copy calls this at the same moment, only
+# the first gets through: the others block on the lock, then see the fresh
+# timestamp below and bail. The same lock still covers the stamp written at the
+# end, keeping the check-and-update atomic.
+if [[ -n $DUE_SECS ]]; then
+  mkdir -p "$(dirname "$STAMP_FILE")" 2>/dev/null || true
+  if exec {lockfd}>"$STAMP_FILE.lock" 2>/dev/null; then
+    flock "$lockfd" 2>/dev/null || true
+  fi
+  last="$(cat "$STAMP_FILE" 2>/dev/null || true)"
+  if [[ $last =~ ^[0-9]+$ && $DUE_SECS =~ ^[0-9]+$ ]] && (( $(date +%s) - last < DUE_SECS )); then
+    exit 0
+  fi
+fi
 
 IMAGE_GLOB=(-iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.gif' -o -iname '*.bmp' -o -iname '*.webp')
 
@@ -122,6 +170,9 @@ if [[ $APPLY_THEME == 1 && -n $THEME ]] && is_installed_theme "$THEME" && [[ $TH
   OMARCHY_THEME_SKIP_BACKGROUND=1 omarchy-theme-set "$THEME"
 fi
 omarchy-theme-bg-set "$IMAGE"
+
+# Stamp the rotation time so the widget can resume its countdown after a reload.
+mkdir -p "$(dirname "$STAMP_FILE")" 2>/dev/null && date +%s >"$STAMP_FILE" 2>/dev/null || true
 
 if [[ $NOTIFY == 1 ]]; then
   name="$(basename "$IMAGE")"

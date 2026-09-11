@@ -18,8 +18,6 @@ BarWidget {
   property bool notify: false
   property string glyph: "󰋫"
 
-  readonly property int intervalMs: Math.max(1, root.intervalMinutes) * 60000
-
   readonly property string rotateScript: {
     var u = Qt.resolvedUrl("scripts/rotate.sh").toString()
     return u.replace(/^file:\/\//, "")
@@ -52,12 +50,24 @@ BarWidget {
       root.bar.shell.updateEntryInline(root.moduleName, entry)
   }
 
-  function rotateNow() {
-    var args = ["bash", root.rotateScript,
+  // dueSecs < 0 rotates unconditionally (a click or the `next` IPC call);
+  // dueSecs >= 0 passes --if-due so the script rotates only when that many
+  // seconds have elapsed since the last rotation.
+  function rotateArgs(dueSecs) {
+    var a = ["bash", root.rotateScript,
       "--apply-theme", root.applyMatchingTheme ? "1" : "0",
       "--notify", root.notify ? "1" : "0"]
-    if (root.wallpaperDir.length > 0) { args.push("--dir"); args.push(root.wallpaperDir) }
-    Quickshell.execDetached(args)
+    if (dueSecs >= 0) { a.push("--if-due"); a.push(String(dueSecs)) }
+    if (root.wallpaperDir.length > 0) { a.push("--dir"); a.push(root.wallpaperDir) }
+    return a
+  }
+
+  function rotateNow() {
+    Quickshell.execDetached(root.rotateArgs(-1))
+  }
+
+  function rotateIfDue() {
+    Quickshell.execDetached(root.rotateArgs(Math.max(1, root.intervalMinutes) * 60))
   }
 
   function toggleAuto() {
@@ -71,12 +81,21 @@ BarWidget {
   onSettingsChanged: applySettings()
   Component.onCompleted: applySettings()
 
-  // The rotation clock. Restarts whenever the interval or enabled state changes.
+  // The rotation clock. It deliberately does NOT count the whole interval in
+  // memory: the shell tears this widget down and rebuilds it on every plugin
+  // reload or restart, which would reset such a countdown — that is exactly why
+  // auto-rotate would get stuck on one wallpaper for hours. Instead it ticks
+  // once a minute and asks the script to rotate only once a full interval has
+  // passed since the last rotation, a time the script records on disk. So the
+  // schedule is preserved no matter how often the widget is rebuilt.
+  // triggeredOnStart makes it check the instant the widget (re)appears, so a
+  // rotation that came due while the shell was down happens right away.
   Timer {
-    interval: root.intervalMs
+    interval: 60000
     repeat: true
     running: root.autoEnabled
-    onTriggered: root.rotateNow()
+    triggeredOnStart: true
+    onTriggered: root.rotateIfDue()
   }
 
   IpcHandler {
