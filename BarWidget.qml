@@ -5,8 +5,9 @@ import qs.Commons
 import qs.Ui
 
 // Wallpaper Roulette: a thin bar widget that fires scripts/rotate.sh on a timer
-// (and on click). All of the wallpaper/theme logic lives in the script so it can
-// be run and tested outside the shell.
+// (and on click) and opens scripts/pick.sh on right-click. All of the
+// wallpaper/theme logic lives in the scripts so it can be run and tested
+// outside the shell.
 BarWidget {
   id: root
   moduleName: "io.github.keegan-sucks.wallpaper-roulette"
@@ -18,9 +19,11 @@ BarWidget {
   property bool notify: false
   property string glyph: "󰋫"
 
-  readonly property string rotateScript: {
-    var u = Qt.resolvedUrl("scripts/rotate.sh").toString()
-    return u.replace(/^file:\/\//, "")
+  readonly property string rotateScript: root.localPath("scripts/rotate.sh")
+  readonly property string pickScript: root.localPath("scripts/pick.sh")
+
+  function localPath(relative) {
+    return Qt.resolvedUrl(relative).toString().replace(/^file:\/\//, "")
   }
 
   function configuredInt(key, fallback, minimum, maximum) {
@@ -75,11 +78,36 @@ BarWidget {
     root.persistSetting("autoEnabled", root.autoEnabled)
   }
 
+  // The wallpaper picker: the stock Omarchy image carousel over every
+  // wallpaper the roulette can land on. pick.sh blocks until the picker
+  // closes and then applies the choice itself, so it runs detached.
+  function pickArgs(prepare) {
+    var a = ["bash", root.pickScript,
+      "--apply-theme", root.applyMatchingTheme ? "1" : "0",
+      "--notify", root.notify ? "1" : "0"]
+    if (prepare) a.push("--prepare")
+    if (root.wallpaperDir.length > 0) { a.push("--dir"); a.push(root.wallpaperDir) }
+    return a
+  }
+
+  function openPicker() {
+    Quickshell.execDetached(root.pickArgs(false))
+  }
+
+  // Stage the picker's file list and thumbnails ahead of time so the first
+  // right-click opens without a pause. Cheap when nothing changed.
+  function preparePicker() {
+    Quickshell.execDetached(["nice", "-n", "10"].concat(root.pickArgs(true)))
+  }
+
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
   onSettingsChanged: applySettings()
-  Component.onCompleted: applySettings()
+  Component.onCompleted: {
+    applySettings()
+    preparePicker()
+  }
 
   // The rotation clock. It deliberately does NOT count the whole interval in
   // memory: the shell tears this widget down and rebuilds it on every plugin
@@ -102,6 +130,7 @@ BarWidget {
     target: "io.github.keegan-sucks.wallpaper-roulette"
 
     function next(): void { root.rotateNow() }
+    function pick(): void { root.openPicker() }
     function toggle(): void { root.toggleAuto() }
     function status(): string {
       return JSON.stringify({
@@ -125,9 +154,9 @@ BarWidget {
     tooltipText: "Wallpaper Roulette · " + (root.autoEnabled
       ? ("auto every " + root.intervalMinutes + " min")
       : "paused")
-      + "\nClick: shuffle now · Right-click: " + (root.autoEnabled ? "pause" : "resume")
+      + "\nClick: shuffle now · Right-click: choose a wallpaper"
     onPressed: function(b) {
-      if (b === Qt.RightButton) root.toggleAuto()
+      if (b === Qt.RightButton) root.openPicker()
       else root.rotateNow()
     }
 
