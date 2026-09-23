@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.keegan-sucks.wallpaper-roulette",
   "name": "Wallpaper Roulette",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "keegan-sucks",
   "license": "MIT",
   "description": "Rotates through your wallpapers on a timer and switches the Omarchy theme to match each one. Point it at a folder of wallpapers organized by theme, or leave it on the built-in Omarchy wallpapers.",
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Wallpaper Roulette",
-    "description": "Auto-rotate wallpapers and match the theme to each one",
+    "description": "Auto-rotate wallpapers and match the theme to each one; right-click to pick one",
     "category": "Appearance",
     "allowMultiple": false,
     "defaultSection": "right",
@@ -37,7 +37,7 @@
         "key": "autoEnabled",
         "type": "boolean",
         "label": "Auto-rotate",
-        "description": "Rotate automatically on the timer. Turn off to only change on click. Right-click the bar icon to toggle this.",
+        "description": "Rotate automatically on the timer. Turn off to only change on click or from the picker.",
         "defaultValue": true
       },
       {

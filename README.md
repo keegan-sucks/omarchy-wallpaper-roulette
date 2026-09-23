@@ -46,7 +46,7 @@ already, and open its settings to choose your wallpaper folder.
 |---|---|---|
 | **Wallpaper directory** | *(empty)* | Folder laid out as `<dir>/<theme-slug>/image`. Empty = the built-in Omarchy wallpapers. |
 | **Rotate every (minutes)** | `30` | How often to switch wallpaper. |
-| **Auto-rotate** | `on` | Rotate on the timer. Right-click the bar icon to toggle. |
+| **Auto-rotate** | `on` | Rotate on the timer. Off = change only on click or from the picker. |
 | **Match theme to wallpaper** | `on` | Switch the Omarchy theme to the wallpaper's folder name. |
 | **Notify on change** | `off` | Desktop notification on each rotation. |
 | **Bar glyph** | `󰋫` | Nerd Font glyph shown in the bar. |
@@ -54,20 +54,45 @@ already, and open its settings to choose your wallpaper folder.
 ## Controls
 
 - **Left-click** the bar icon: shuffle to a new wallpaper now.
-- **Right-click**: pause / resume auto-rotation.
+- **Right-click**: open the wallpaper picker.
 - From a script or keybinding:
   ```bash
   omarchy-shell -q io.github.keegan-sucks.wallpaper-roulette next     # shuffle now
-  omarchy-shell -q io.github.keegan-sucks.wallpaper-roulette toggle   # pause/resume
+  omarchy-shell -q io.github.keegan-sucks.wallpaper-roulette pick     # open the picker
+  omarchy-shell -q io.github.keegan-sucks.wallpaper-roulette toggle   # pause/resume auto-rotate
   ```
+
+## The wallpaper picker
+
+Right-clicking the icon opens the stock Omarchy image carousel (the one behind
+`omarchy-theme-bg-switcher` and the theme switcher), filled with **every
+wallpaper the roulette can land on** across all of your theme folders, grouped
+by theme. The current wallpaper is pre-selected.
+
+- **←/→** or **Tab** move through the carousel, **Enter** or a click on the
+  large preview applies, **Esc** dismisses.
+- Each wallpaper is labelled `<Theme> <Name>`; just start typing to filter, so
+  typing `tokyo` shows only the Tokyo Night wallpapers.
+- Picking a wallpaper applies its theme (when *Match theme to wallpaper* is on)
+  exactly as an automatic rotation would, and resets the rotation timer.
+
+The picker is fed through symlinks named `<theme>--<file>` under
+`~/.cache/omarchy/wallpaper-roulette/picker/`, which is what lets it show the
+theme in the label and keep two themes' identically named wallpapers apart.
+That folder and the thumbnails are refreshed in the background when the bar
+loads, so the picker opens instantly.
 
 ## Rotate from the command line
 
-The plugin is a thin wrapper around `scripts/rotate.sh`, which works on its own:
+The plugin is a thin wrapper around `scripts/rotate.sh` and `scripts/pick.sh`,
+which work on their own:
 
 ```bash
 scripts/rotate.sh --dir ~/.config/omarchy/backgrounds --apply-theme 1
 scripts/rotate.sh --dry-run          # show what it would pick, change nothing
+scripts/rotate.sh --list             # print every candidate as "theme<TAB>path"
+scripts/rotate.sh --set ~/Pictures/wall.png --theme nord   # apply one wallpaper
+scripts/pick.sh --dir ~/.config/omarchy/backgrounds        # open the picker
 ```
 
 ## Dependencies
